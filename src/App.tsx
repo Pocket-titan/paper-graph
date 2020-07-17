@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { stringifyUrl } from "query-string";
 import { useQuery } from "react-query";
 import Measure from "react-measure";
 import Graph from "./Graph";
@@ -54,6 +55,26 @@ const Input = ({ width = 500, height = 75 }) => {
 };
 
 const App = () => {
+  useEffect(() => {
+    let fetchData = async () => {
+      let url = stringifyUrl({
+        url: "http://localhost:4004/api/evaluate",
+        query: {
+          expr: "Albert Einstein",
+        },
+      });
+
+      let res = await fetch(url, {
+        method: "GET",
+      });
+
+      let json = await res.json();
+
+      console.log("json", json);
+    };
+
+    fetchData();
+  }, []);
   return (
     <div
       style={{
