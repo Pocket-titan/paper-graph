@@ -1,4 +1,4 @@
-import { stringify } from 'querystring';
+import { stringify } from "querystring";
 
 type Source = {
   Ty: string;
@@ -18,33 +18,33 @@ interface Entity {
   logprob?: number;
   prob?: number;
   // Paper attributes
-  'AA.AfId'?: number;
-  'AA.AfN'?: string;
-  'AA.AuId'?: number;
-  'AA.AuN'?: string;
-  'AA.DAuN'?: string;
-  'AA.DAfN'?: string;
-  'AA.S'?: number;
+  "AA.AfId"?: number;
+  "AA.AfN"?: string;
+  "AA.AuId"?: number;
+  "AA.AuN"?: string;
+  "AA.DAuN"?: string;
+  "AA.DAfN"?: string;
+  "AA.S"?: number;
   AW?: string[];
   BT?: string;
   BV?: string;
-  'C.CId'?: number;
-  'C.CN'?: string;
+  "C.CId"?: number;
+  "C.CN"?: string;
   CC?: number;
   CitCon?: { [Id: string]: string[] };
   D?: Date;
   DN?: string;
   DOI?: string;
   ECC?: number;
-  'F.DFN'?: string;
-  'F.FId'?: number;
-  'F.FN'?: string;
+  "F.DFN"?: string;
+  "F.FId"?: number;
+  "F.FN"?: string;
   FamId: number;
   FP?: string;
   I?: string;
   IA?: InvertedAbstract;
-  'J.JId'?: number;
-  'J.JN'?: string;
+  "J.JId"?: number;
+  "J.JN"?: string;
   LP?: string;
   PB?: string;
   Pt?: string;
@@ -61,8 +61,8 @@ interface Entity {
   // CC?: number;
   DAuN?: string;
   // ECC?: number;
-  'LKA.AfId'?: number;
-  'LKA.AfN'?: string;
+  "LKA.AfId"?: number;
+  "LKA.AfN"?: string;
   PC?: number;
   // Affiliation attributes
   AfN?: string;
@@ -73,15 +73,15 @@ interface Entity {
 }
 
 enum Service {
-  Evaluate = 'evaluate',
-  CalcHistogram = 'calchistogram',
-  Interpret = 'interpret',
-  Similarity = 'similarity',
+  Evaluate = "evaluate",
+  CalcHistogram = "calchistogram",
+  Interpret = "interpret",
+  Similarity = "similarity",
 }
 
 enum Method {
-  GET = 'GET',
-  POST = 'POST',
+  GET = "GET",
+  POST = "POST",
 }
 
 type PostParameters = {
@@ -89,7 +89,7 @@ type PostParameters = {
 };
 
 const isPostParameters = (parameters: object): parameters is PostParameters => {
-  return typeof (parameters as PostParameters).body === 'string';
+  return typeof (parameters as PostParameters).body === "string";
 };
 
 type StringifyableParameters = {
@@ -104,11 +104,13 @@ interface EvaluateResponse {
 
 class AcademicApi {
   private api_key: string;
+  private endpoint: string;
   // private endpoint = 'https://api.labs.cognitive.microsoft.com/academic/v1.0';
-  private endpoint = 'localhost:4000/api';
+  // private endpoint = 'localhost:4000/api';
 
-  constructor({ api_key }: { api_key: string }) {
+  constructor({ api_key, endpoint }: { api_key: string; endpoint: string }) {
     this.api_key = api_key;
+    this.endpoint = endpoint;
   }
 
   private async fetch_api(
@@ -116,6 +118,11 @@ class AcademicApi {
     parameters: object,
     method: Method = isPostParameters(parameters) ? Method.POST : Method.GET
   ) {
+    // very hacky
+    if (!globalThis.fetch) {
+      globalThis.fetch = (await import("node-fetch")) as any;
+    }
+
     let url: string;
     let options: object;
 
@@ -125,18 +132,20 @@ class AcademicApi {
         options = {
           method,
           headers: {
-            'Ocp-Apim-Subscription-Key': this.api_key,
-            'Content-type': 'application/x-www-form-urlencoded',
+            "Ocp-Apim-Subscription-Key": this.api_key,
+            "Content-type": "application/x-www-form-urlencoded",
           },
           body: (parameters as PostParameters).body,
         };
         break;
       case Method.GET:
-        url = `${this.endpoint}/${service}?${stringify(parameters as StringifyableParameters)}`;
+        url = `${this.endpoint}/${service}?${stringify(
+          parameters as StringifyableParameters
+        )}`;
         options = {
           method,
           headers: {
-            'Ocp-Apim-Subscription-Key': this.api_key,
+            "Ocp-Apim-Subscription-Key": this.api_key,
           },
         };
         break;
