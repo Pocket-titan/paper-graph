@@ -1,81 +1,138 @@
-import React from 'react';
-import { ForceGraph2D } from 'react-force-graph';
-import data from './data.json';
-import Graph from './Graph';
+import React, { useEffect, useState } from "react";
+import produce from "immer";
+import data from "./data.json";
+import Graph from "./Graph";
+import { isDeepStrictEqual } from "util";
 
-// let transformed_data = {
-//   nodes: Object.values(data.vertices).map(({ id, citation_count }) => {
-//     return {
-//       id: id,
-//       citation_count: 1 + (citation_count === 'unknown' ? 0 : (citation_count as number)) / 100,
-//     };
-//   }),
-//   links: data.edges.map(({ from, to, times_cited }) => {
-//     return {
-//       from,
-//       to,
-//       times_cited,
-//       color: `hsl(0, 0%, ${Math.min(100, 50 + (times_cited - 1) * 10)}%)`,
-//     };
-//   }),
-// };
+const MAX_NODES = 1; // per cell, any more and we subdivide
 
-// const Graph = () => {
-//   const fgRef = useRef();
+type Position = {
+  x: number;
+  y: number;
+};
 
-//   useEffect(() => {
-//     const fg = fgRef.current as any;
+type Particle = {
+  position: Position;
+};
 
-//     // Deactivate existing forces
-//     // fg.d3Force('center', null);
-//     // fg.d3Force('charge', () => {
-//     //   // transformed_data.nodes.forEach((node: any) => {
-//     //   //   node.vx = 50;
-//     //   // });
-//     // });
+type Region = {
+  width: number;
+  height: number;
+  position: Position;
+};
 
-//     // Add collision and bounding box forces
-//     // fg.d3Force('collide', d3.forceCollide(4));
-//   }, []);
+type Cell<T> = Region & {
+  children: T;
+};
 
-//   return (
-//     <ForceGraph2D
-//       ref={fgRef}
-//       graphData={transformed_data}
-//       nodeId='id'
-//       linkSource='from'
-//       linkTarget='to'
-//       nodeVal='citation_count'
-//       nodeLabel='title'
-//       nodeRelSize={4}
-//       linkDirectionalArrowLength={10}
-//       linkCurvature={0.3}
-//       width={window.innerWidth}
-//       height={window.innerHeight}
-//       onNodeDragEnd={(node) => {
-//         node.fx = node.x;
-//         node.fy = node.y;
-//       }}
-//       d3VelocityDecay={0.8}
-//       d3AlphaDecay={0.01}
-//     />
-//   );
-// };
+// A Quadrant either contains some particles, or four sub-Quadrants
+type Quadrant =
+  | Cell<Particle[]>
+  | Cell<[Quadrant, Quadrant, Quadrant, Quadrant]>;
+
+const contains_particle = function (
+  region: Region,
+  particle: Particle
+): Boolean {
+  return (
+    region.position.x <= particle.position.x &&
+    particle.position.x <= region.position.x + region.width &&
+    region.position.y <= particle.position.y &&
+    particle.position.y <= region.position.y + region.height
+  );
+};
+
+const add_particle = function (
+  particle: Particle,
+  cell: Cell<Particle[]>
+): Cell<Particle[]> {
+  return produce(cell, (draft) => {
+    draft.children.push(particle);
+  });
+};
+
+const remove_particle = function (
+  particle: Particle,
+  cell: Cell<Particle[]>
+): Cell<Particle[]> {
+  let index = cell.children.findIndex((p) => isDeepStrictEqual(p, particle));
+
+  if (index === -1) {
+    throw new Error(`Could not find particle: ${particle} in cell: ${cell}.`);
+  }
+
+  return produce(cell, (draft) => {
+    draft.children.splice(index, 1);
+  });
+};
+
+const subdivide = function (region: Region): [Region, Region, Region, Region] {
+  let size = {
+    width: region.width / 2,
+    height: region.height / 2,
+  };
+
+  return [
+    {
+      ...size,
+      position: {
+        x: region.position.x,
+        y: region.position.y,
+      }, // top_left
+    },
+    {
+      ...size,
+      position: {
+        x: region.position.x + size.width,
+        y: region.position.y,
+      }, // top_right
+    },
+    {
+      ...size,
+      position: {
+        x: region.position.x + size.width,
+        y: region.position.y + size.height,
+      }, // bottom_right
+    },
+    {
+      ...size,
+      position: {
+        x: region.position.x,
+        y: region.position.y + size.height,
+      }, // bottom_left
+    },
+  ];
+};
+
+const build_quadtree = function (
+  particles: Particle[],
+  { bounds }: { bounds: { width: number; height: number } }
+) {
+  let tree: Quadrant = {
+    width: bounds.width,
+    height: bounds.height,
+    position: { x: 0, y: 0 },
+    children: [],
+  };
+
+  for (let particle of particles) {
+  }
+};
 
 const App = () => {
   return (
     <div
       style={{
-        width: '100vw',
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'hsl(0, 0%, 10%)',
-        overflow: 'hidden',
+        width: "100vw",
+        height: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "hsl(0, 0%, 10%)",
+        overflow: "hidden",
       }}
     >
-      <Graph />
+      {/* <Graph/> */}
     </div>
   );
 };

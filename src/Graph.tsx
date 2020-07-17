@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import _ from 'lodash';
 import produce from 'immer';
 import data from './data.json';
@@ -81,10 +81,23 @@ const attracting_force = (
   return scale_vector(vector_difference, ((c * (node1.mass + node2.mass)) / 2) * vector_length(vector_difference));
 };
 
-const Graph = () => {
+const Graph = ({
+  base_partition_size = 450,
+  fuzziness = 0.1,
+  fuzz = base_partition_size * fuzziness,
+  stopping_velocity = 0.5,
+  starting_velocity_range = [1, 5],
+}: {
+  base_partition_size?: number;
+  fuzziness?: number;
+  fuzz?: number;
+  stopping_velocity?: number;
+  starting_velocity_range?: Vector;
+}) => {
   const [time, pause, resume] = useClock({ delay: 100 });
   const [connections, setConnections] = useState([] as Connections);
   const [nodes, setNodes] = useState({} as Nodes);
+  let fuzzing: { current: 0 | 1 | 2 } = useRef(0);
 
   let nodes_array: Node[] = useMemo(() => Object.values(nodes), [nodes]);
   let edges_array: Edge[] = useMemo(() => {
@@ -116,7 +129,10 @@ const Graph = () => {
             Math.min(width - RADIUS, Math.max(RADIUS, Math.random() * width)),
             Math.min(height - RADIUS, Math.max(RADIUS, Math.random() * height)),
           ],
-          velocity: [0, 0],
+          velocity: [
+            starting_velocity_range[0] + Math.random() * (starting_velocity_range[1] - starting_velocity_range[0]),
+            starting_velocity_range[0] + Math.random() * (starting_velocity_range[1] - starting_velocity_range[0]),
+          ],
           // charge: citation_count === 'unknown' ? 1 : (citation_count as number),
           // mass: citation_count === 'unknown' ? 1 : (citation_count as number),
           charge: 20,
@@ -138,13 +154,14 @@ const Graph = () => {
   }, []);
 
   const update = useCallback(() => {
-    const PARTITION_SIZE = 250;
-
     let new_nodes = produce(nodes, (draftNodes) => {
+      fuzzing.current = ((fuzzing.current + 1) % 3) as 0 | 1 | 2;
+      const partition_size = base_partition_size - fuzz + fuzzing.current * fuzz;
+
       let partitions: Partitions = {};
 
       nodes_array.forEach(({ id, position, mass, charge }) => {
-        let key = `${Math.floor(position[0] / PARTITION_SIZE)},${Math.floor(position[1] / PARTITION_SIZE)}`; // = `x,y`
+        let key = `${Math.floor(position[0] / partition_size)},${Math.floor(position[1] / partition_size)}`; // = `x,y`
 
         if (!partitions[key]) {
           partitions[key] = {
