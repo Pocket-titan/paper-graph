@@ -158,3 +158,21 @@ button {
     height: 5em;
   }
 }
+
+/* results */
+.result {
+  background-color: var(--input-background);
+  padding: 1em;
+  color: var(--input-text-active);
+  text-transform: capitalize;
+  cursor: pointer;
+  transition: all 150ms ease-in-out;
+}
+
+.result:not(:last-child) {
+  border-bottom: 1px solid hsl(187, 54%, 52%);
+}
+
+.result:hover {
+  filter: brightness(1.2);
+}
