@@ -3,10 +3,9 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import _ from "lodash";
 import { parseUrl, stringifyUrl } from "query-string";
-import { EvaluateParameters, InterpretParameters } from "./types";
 import fetch from "node-fetch";
-import AcademicApi from "./api";
 import api_key from "./api_key";
+import { Graph, Node, Link, Id } from "./typ";
 
 const port = 4004;
 const endpoint = "https://api.labs.cognitive.microsoft.com/academic/v1.0/";
@@ -17,6 +16,8 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cors());
 
+const match_id = (id: string | number) => `Id=${id}`;
+
 const postify = (parameters: object) =>
   Object.entries(parameters)
     .map(
@@ -24,6 +25,25 @@ const postify = (parameters: object) =>
         `${key}=${value.toString().split(" ").join("%20")}`
     )
     .join("&");
+
+const MAX_DEPTH = 4;
+
+const dredge = async (ids: Id[], graph: Graph, depth = 0): Promise<Graph> => {
+  if (ids.length === 0 || depth > MAX_DEPTH) {
+    return graph;
+  }
+
+  let expr =
+    ids.length === 1 ? match_id(ids[0]) : `Or(${ids.map(match_id).join(",")})`;
+
+  let body = postify({
+    expr,
+    attributes: "Id,CitCon,CC,Ti",
+    count: ids.length,
+  });
+
+  return graph;
+};
 
 app.get(`${root}/evaluate`, async (req, res) => {
   let query = _.chain(req.query)
@@ -50,8 +70,7 @@ app.get(`${root}/results`, async (req, res) => {
     {
       expr: `And(Ty='0', Or(Ti='${input}', Composite(AA.AuN='${input}')))`,
       count: 5,
-      attributes: "Ti,Ty,AA.AuN,CC",
-      // orderby: "CC:desc",
+      attributes: "Id,Ti,CC,CitCon",
     },
     (value) => value?.toString()
   );
@@ -67,11 +86,16 @@ app.get(`${root}/results`, async (req, res) => {
 
   let json = await response.json();
 
-  res.json({
-    results: json.entities.map(({ Ti }: { Ti: string }) => ({
-      title: Ti,
-    })),
-  });
+  res.json(json.entities);
+});
+
+app.get(`${root}/papers`, async (req, res) => {
+  const Id = parseInt(req.query.Id as string, 10);
+  console.log("Id", Id);
+
+  let graph: Graph = await dredge([], {});
+
+  res.json(graph);
 });
 
 app.listen(port, async () => {

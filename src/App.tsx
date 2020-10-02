@@ -1,18 +1,32 @@
 import React, { useEffect, useState, useRef } from "react";
-import _, { debounce } from "lodash";
+import _ from "lodash";
 import { stringifyUrl } from "query-string";
-import { useQuery } from "react-query";
 import Measure from "react-measure";
 import Graph from "./Graph";
 import "./App.css";
 
+const delay = (ms: number): Promise<never> =>
+  new Promise((resolve, reject) => {
+    setTimeout(() => reject("Took too long!"), ms);
+  });
+
 type Result = {
-  title: string;
+  Ty: "0";
+  Id: number;
+  Ti: string;
+  AA: {
+    AuN: string;
+  };
+  logprob: number;
+  prob: number;
+  CC: number;
+  CitCon: { [Id: string]: string[] };
 };
 
 const Input = ({ width = 500, height = 75 }) => {
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isInputDisabled, setIsInputDisabled] = useState(false);
   const [results, setResults] = useState([] as Result[]);
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedAutocomplete = useRef(
@@ -28,8 +42,8 @@ const Input = ({ width = 500, height = 75 }) => {
         });
 
         let res = await fetch(url, { method: "GET" });
-        let json = await res.json();
-        setResults(json.results);
+        let results = (await res.json()) as Result[];
+        setResults(results);
       } catch (error) {
         console.error(error);
       } finally {
@@ -38,10 +52,37 @@ const Input = ({ width = 500, height = 75 }) => {
     }, 1000)
   );
 
+  const fetchGraph = async (Id: number) => {
+    setIsInputDisabled(true);
+    setLoading(true);
+
+    try {
+      let url = stringifyUrl({
+        url: "http://localhost:4004/api/papers",
+        query: {
+          Id: Id.toString(),
+        },
+      });
+
+      let res = await Promise.race([
+        fetch(url, { method: "GET" }),
+        delay(2000),
+      ]);
+      let json = await res.json();
+
+      console.log("json", json);
+    } catch (error) {
+    } finally {
+      setIsInputDisabled(false);
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ position: "relative", width }}>
       <div className="search" style={{ maxWidth: width, height }}>
         <input
+          disabled={isInputDisabled}
           ref={inputRef}
           type="text"
           value={value}
@@ -60,6 +101,8 @@ const Input = ({ width = 500, height = 75 }) => {
         />
         {value.length > 0 && (
           <button
+            className="clear-button"
+            disabled={isInputDisabled}
             onClick={() => {
               setValue("");
               setResults([]);
@@ -76,6 +119,7 @@ const Input = ({ width = 500, height = 75 }) => {
           </button>
         ) : (
           <button
+            className="search-button"
             onClick={(event) => {
               event.preventDefault();
 
@@ -99,8 +143,15 @@ const Input = ({ width = 500, height = 75 }) => {
         }}
       >
         {results.map((result) => (
-          <div key={result.title} className="result">
-            {result.title}
+          <div
+            key={result.Id}
+            className="result"
+            onClick={() => {
+              setResults([]);
+              fetchGraph(result.Id);
+            }}
+          >
+            {result.Ti}
           </div>
         ))}
       </div>

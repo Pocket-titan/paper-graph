@@ -13,12 +13,12 @@ type Link = {
   value: number;
 };
 
-type GraphData = {
+type Graph = {
   nodes: Node[];
   links: Link[];
 };
 
-const mockData: GraphData = {
+const mockData: Graph = {
   nodes: [
     {
       id: "1",
@@ -44,7 +44,7 @@ const mockData: GraphData = {
   ],
 };
 
-const Graph = ({ data = mockData }: { data?: GraphData }) => {
+const Graph = ({ data = mockData }: { data?: Graph }) => {
   return (
     <ForceGraph2D
       graphData={data}
